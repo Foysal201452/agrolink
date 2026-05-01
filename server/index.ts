@@ -746,8 +746,8 @@ app.post("/api/scan", requireAuth, (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: "Invalid payload" });
 
   const user = (req as any).user as SessionUser;
-  if (user.role !== "admin" && user.role !== "depo" && user.role !== "delivery") {
-    return res.status(403).json({ error: "Scan only for admin/depo/delivery" });
+  if (user.role === "admin" || (user.role !== "depo" && user.role !== "delivery")) {
+    return res.status(403).json({ error: "Scan only for depo/delivery" });
   }
   const orderId = parsed.data.orderId;
 

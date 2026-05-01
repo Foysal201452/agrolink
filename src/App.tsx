@@ -74,7 +74,7 @@ const App = () => (
               <Route
                 path="/scanner"
                 element={
-                  <RequireRole roles={["admin"]}>
+                  <RequireRole roles={["depo", "delivery"]}>
                     <Scanner />
                   </RequireRole>
                 }

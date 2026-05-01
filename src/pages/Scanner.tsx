@@ -31,8 +31,13 @@ export default function Scanner() {
       navigate("/login", { state: { from: { pathname: "/scanner" } } });
       return;
     }
-    if (auth.user.role !== "admin") {
-      toast("Admin only", { description: "Scanner ব্যবহার করতে Admin হিসেবে লগইন করুন।" });
+    if (auth.user.role === "admin") {
+      toast("Scanner access denied", { description: "Admin এর জন্য স্ক্যান বন্ধ করা হয়েছে। Depot/Delivery দিয়ে স্ক্যান করুন।" });
+      navigate("/logistics");
+      return;
+    }
+    if (auth.user.role !== "depo" && auth.user.role !== "delivery") {
+      toast("Depot/Delivery only", { description: "Scanner ব্যবহার করতে Depot/Delivery হিসেবে লগইন করুন।" });
       navigate("/login", { state: { from: { pathname: "/scanner" } } });
     }
   }, [auth, navigate]);

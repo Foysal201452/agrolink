@@ -25,7 +25,6 @@ function navForUser(user: User | undefined) {
         { to: "/farmer-dashboard", label: "কৃষক" },
         { to: "/buyer-dashboard", label: "ক্রেতা" },
         { to: "/cart", label: "কার্ট" },
-        { to: "/scanner", label: "Scan" },
         { to: "/db-admin", label: "DB" },
       ],
       showCart: true,
@@ -49,9 +48,9 @@ function navForUser(user: User | undefined) {
     };
   }
 
-  // depo / delivery (legacy demo accounts)
+  // depo / delivery (scanner users)
   return {
-    links: [...base, { to: "/login", label: "লগইন" }],
+    links: [...base, { to: "/scanner", label: "Scan" }],
     showCart: false,
     showReset: false,
   };

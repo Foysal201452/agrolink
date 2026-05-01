@@ -42,7 +42,7 @@ export default function Login() {
           <h1 className="font-heading text-3xl sm:text-4xl font-bold mb-2">
             <span className="text-gradient">লগইন</span>
           </h1>
-          <p className="text-muted-foreground">ক্রেতা, কৃষক বা অ্যাডমিন হিসেবে লগইন করুন। (QR স্ক্যান শুধু অ্যাডমিন)</p>
+          <p className="text-muted-foreground">ক্রেতা, কৃষক, ডিপো বা ডেলিভারি হিসেবে লগইন করুন। (QR স্ক্যান শুধু ডিপো/ডেলিভারি)</p>
         </motion.div>
 
         <div className="max-w-xl rounded-2xl border border-border/50 bg-gradient-card p-6 shadow-card">
@@ -146,9 +146,10 @@ export default function Login() {
                             farmerName: role === "farmer" ? displayName.trim() : undefined,
                           });
                     toast(mode === "login" ? "লগইন সফল" : "রেজিস্টার সফল");
-                    if (u.role === "admin") navigate(from ?? "/scanner");
+                    if (u.role === "admin") navigate(from ?? "/logistics");
                     else if (u.role === "buyer") navigate(from ?? "/buyer-dashboard");
                     else if (u.role === "farmer") navigate(from ?? "/farmer-dashboard");
+                    else if (u.role === "depo" || u.role === "delivery") navigate(from ?? "/scanner");
                     else navigate(from ?? "/marketplace");
                   } catch {
                     toast(mode === "login" ? "Login failed" : "Register failed", {
