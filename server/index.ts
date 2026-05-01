@@ -796,7 +796,8 @@ const distDir = path.resolve(__dirname, "..", "dist");
 
 if (process.env.NODE_ENV === "production") {
   app.use(express.static(distDir));
-  app.get("*", (_req, res) => {
+  // Express 5 + path-to-regexp: "*" is invalid; use a regexp catch-all
+  app.get(/.*/, (_req, res) => {
     res.sendFile(path.join(distDir, "index.html"));
   });
 }
