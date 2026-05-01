@@ -501,6 +501,7 @@ const AppStoreContext = createContext<{
   addListing: (listing: Omit<Crop, "id" | "rating" | "active"> & { rating?: number }) => Promise<void>;
   deactivateListing: (cropId: number) => Promise<void>;
   advanceShipmentStep: (shipmentId: string) => Promise<void>;
+  refreshFromServer: () => Promise<void>;
   resetAll: () => void;
   derived: {
     cartCount: number;
@@ -534,33 +535,43 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
   }, [state]);
 
   useEffect(() => {
+    const u = auth?.user;
+    if (!u) return;
+    if (u.role === "buyer" && u.buyerName?.trim()) dispatch({ type: "SET_BUYER_NAME", buyerName: u.buyerName.trim() });
+    if (u.role === "farmer" && u.farmerName?.trim()) dispatch({ type: "SET_FARMER_NAME", farmerName: u.farmerName.trim() });
+  }, [auth?.token, auth?.user?.role, auth?.user?.buyerName, auth?.user?.farmerName]);
+
+  const refreshFromServer = async () => {
+    try {
+      const res = auth?.token ? await authFetch("/api/bootstrap") : await fetch("/api/bootstrap");
+      if (!res.ok) return;
+      const data = (await res.json()) as {
+        crops?: Crop[];
+        orders?: Order[];
+        shipments?: Shipment[];
+        warehouses?: Warehouse[];
+      };
+      if (Array.isArray(data.crops) && data.crops.length > 0) dispatch({ type: "SET_CROPS", crops: data.crops });
+      // Avoid wiping local demo state when bootstrap is public/unauthenticated (returns empty arrays).
+      if (Array.isArray(data.orders) && (auth?.token || data.orders.length > 0)) dispatch({ type: "SET_ORDERS", orders: data.orders });
+      if (Array.isArray(data.shipments) && (auth?.token || data.shipments.length > 0))
+        dispatch({ type: "SET_SHIPMENTS", shipments: data.shipments });
+      if (Array.isArray(data.warehouses) && data.warehouses.length > 0) dispatch({ type: "SET_WAREHOUSES", warehouses: data.warehouses });
+    } catch {
+      // ignore (offline demo mode)
+    }
+  };
+
+  useEffect(() => {
     let cancelled = false;
     const run = async () => {
-      try {
-        const res = await fetch("/api/bootstrap");
-        if (!res.ok) return;
-        const data = (await res.json()) as {
-          crops?: Crop[];
-          orders?: Order[];
-          shipments?: Shipment[];
-          warehouses?: Warehouse[];
-        };
-        if (cancelled) return;
-        if (Array.isArray(data.crops) && data.crops.length > 0) dispatch({ type: "SET_CROPS", crops: data.crops });
-        // Avoid wiping local demo state when bootstrap is public/unauthenticated (returns empty arrays).
-        if (Array.isArray(data.orders) && (auth?.token || data.orders.length > 0)) dispatch({ type: "SET_ORDERS", orders: data.orders });
-        if (Array.isArray(data.shipments) && (auth?.token || data.shipments.length > 0))
-          dispatch({ type: "SET_SHIPMENTS", shipments: data.shipments });
-        if (Array.isArray(data.warehouses) && data.warehouses.length > 0) dispatch({ type: "SET_WAREHOUSES", warehouses: data.warehouses });
-      } catch {
-        // ignore (offline demo mode)
-      }
+      await refreshFromServer();
     };
-    run();
+    void run();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [auth?.token]);
 
   const derived = useMemo(() => {
     const cartLinesDetailed = state.cart
@@ -687,9 +698,10 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         }
         dispatch({ type: "RESET_ALL" });
       },
+      refreshFromServer,
       derived,
     };
-  }, [state, derived, authFetch]);
+  }, [state, derived, authFetch, auth?.token]);
 
   return <AppStoreContext.Provider value={value}>{children}</AppStoreContext.Provider>;
 }

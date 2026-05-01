@@ -2,6 +2,8 @@ import { motion } from "framer-motion";
 import { Package, Truck, Warehouse as WarehouseIcon, MapPin, Clock, ArrowRight } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { useEffect } from "react";
+import { useAuth } from "@/auth/auth";
 import { useAppStore } from "@/store/app-store";
 import { toast } from "@/components/ui/sonner";
 
@@ -24,7 +26,17 @@ const stepLabel: Record<string, string> = {
 };
 
 export default function Logistics() {
-  const { state, advanceShipmentStep } = useAppStore();
+  const { auth } = useAuth();
+  const { state, advanceShipmentStep, refreshFromServer } = useAppStore();
+
+  useEffect(() => {
+    // Lightweight polling so hub/status updates appear after depot scans.
+    if (auth?.user.role !== "admin") return;
+    const t = window.setInterval(() => {
+      void refreshFromServer();
+    }, 2500);
+    return () => window.clearInterval(t);
+  }, [auth?.user.role, refreshFromServer]);
 
   const shipments = state.shipments;
   const warehouses = state.warehouses;
