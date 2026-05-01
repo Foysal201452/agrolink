@@ -833,25 +833,27 @@ app.post("/api/scan", requireAuth, (req, res) => {
 
   const updatedOrder = db.prepare(`SELECT * FROM orders WHERE id = ?`).get(orderId) as OrderRow;
   const updatedShipment = db.prepare(`SELECT * FROM shipments WHERE id = ?`).get(shipment.id) as ShipmentRow;
-  const warehouses = db.prepare(`SELECT * FROM warehouses`).all() as WarehouseRow[];
-  const lines = db.prepare(`SELECT * FROM order_lines WHERE orderId = ?`).all(orderId) as OrderLineRow[];
-
   res.json({
     order: {
-      ...updatedOrder,
-      lines: lines.map((l) => ({ cropId: l.cropId, qty: l.qty, snapshot: safeParseJson<any>(l.snapshotJson) ?? {} })),
+      id: updatedOrder.id,
+      buyerName: updatedOrder.buyerName,
+      status: updatedOrder.status,
+      dateLabel: updatedOrder.dateLabel,
     },
     shipment: {
       id: updatedShipment.id,
       orderId: updatedShipment.orderId,
-      cargoUnits: updatedShipment.cargoUnits,
-      eta: updatedShipment.eta,
       step: updatedShipment.step,
-      itemsLabel: updatedShipment.itemsLabel,
-      route: safeParseJson<any>(updatedShipment.routeJson) ?? {},
-      timeline: safeParseJson<any>(updatedShipment.timelineJson) ?? [],
+      route: (() => {
+        const r = safeParseJson<any>(updatedShipment.routeJson) ?? {};
+        return {
+          villageHub: r.villageHub ?? null,
+          cityHub: r.cityHub ?? null,
+          city: r.city ?? null,
+        };
+      })(),
+      lastEvent: { action, role: user.role, area: user.area ?? null },
     },
-    warehouses,
     event,
   });
 });

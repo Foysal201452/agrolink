@@ -14,6 +14,8 @@ type ScanResult = {
   area?: string | null;
   shipmentStep?: string;
   cityHub?: string;
+  buyerName?: string;
+  orderStatus?: string;
 };
 
 export default function Scanner() {
@@ -25,6 +27,7 @@ export default function Scanner() {
 
   const [busy, setBusy] = useState(false);
   const [last, setLast] = useState<ScanResult | null>(null);
+  const [msg, setMsg] = useState<string>("");
 
   useEffect(() => {
     if (!auth) {
@@ -52,11 +55,9 @@ export default function Scanner() {
         qrRef.current = scanner;
 
         const devices = await Html5Qrcode.getCameras();
-        const cameraId = devices?.[0]?.id;
-        if (!cameraId) throw new Error("No camera found");
-
         await scanner.start(
-          { deviceId: { exact: cameraId } },
+          // Prefer back camera on mobile
+          { facingMode: "environment" },
           { fps: 10, qrbox: { width: 250, height: 250 } },
           async (decodedText) => {
             if (busy) return;
@@ -65,6 +66,7 @@ export default function Scanner() {
 
             try {
               setBusy(true);
+              setMsg("Updating order status…");
               const res = await authFetch("/api/scan", {
                 method: "POST",
                 headers: { "content-type": "application/json" },
@@ -80,10 +82,14 @@ export default function Scanner() {
                 area: json?.event?.area ?? null,
                 shipmentStep: json?.shipment?.step,
                 cityHub: json?.shipment?.route?.cityHub,
+                buyerName: json?.order?.buyerName,
+                orderStatus: json?.order?.status,
               };
               setLast(payload);
+              setMsg("Order status updated.");
               toast("Scan OK", { description: `${orderId} আপডেট হয়েছে।` });
             } catch {
+              setMsg("Scan failed.");
               toast("Scan failed", { description: "OrderId ভুল বা login নেই।" });
             } finally {
               setBusy(false);
@@ -131,6 +137,11 @@ export default function Scanner() {
             <div className="rounded-xl overflow-hidden border border-border/50 bg-black">
               <div id={regionId} className="min-h-[360px]" />
             </div>
+            {msg ? (
+              <div className="mt-3 rounded-lg border border-border/50 bg-muted/20 px-3 py-2 text-sm text-foreground">
+                {msg}
+              </div>
+            ) : null}
             <p className="mt-3 text-xs text-muted-foreground">
               টিপস: QR কোড স্ক্যান হলে অটোমেটিক `/api/scan` কল হবে এবং Logistics/DB Admin আপডেট হবে।
             </p>
@@ -149,6 +160,12 @@ export default function Scanner() {
                 </div>
                 <div className="text-muted-foreground">
                   Hub: <span className="text-foreground font-medium">{last.cityHub ?? "—"}</span>
+                </div>
+                <div className="text-muted-foreground">
+                  Order:{" "}
+                  <span className="text-foreground font-medium">
+                    {last.orderStatus ?? "—"}{last.buyerName ? ` • ${last.buyerName}` : ""}
+                  </span>
                 </div>
               </div>
             ) : (

@@ -152,12 +152,17 @@ export default function BuyerDashboard() {
                       }`}>{orderStatusLabel[order.status] ?? order.status}</span>
                     </td>
                     <td className="py-3 text-right">
-                      <button
-                        onClick={() => setQrOrderId(order.id)}
-                        className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted"
-                      >
-                        Show
-                      </button>
+                      <div className="inline-flex items-center justify-end gap-2">
+                        <div className="rounded-md bg-white p-1">
+                          <QRCode value={order.id} size={56} />
+                        </div>
+                        <button
+                          onClick={() => setQrOrderId(order.id)}
+                          className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted"
+                        >
+                          বড় করে দেখুন
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
