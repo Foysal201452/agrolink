@@ -1,0 +1,39 @@
+AgroLink — Run on another computer (Windows)
+
+Requirements
+- Node.js 18+ (recommended 20+)
+- Git (optional, if cloning)
+
+Steps
+1) Copy the project folder to the other PC
+   Example: AgroLink/
+
+2) Open PowerShell/Command Prompt in the project folder
+
+3) Install dependencies
+   npm install
+
+4) Start (with database)
+   npm run dev:all
+
+   (Frontend only)
+   npm run dev
+
+5) Open in browser
+   http://localhost:8080
+
+API check (optional)
+- http://127.0.0.1:5050/api/health
+- http://127.0.0.1:5050/api/crops
+
+Build (optional)
+- npm run build
+- npm run preview
+- Open the preview URL shown in terminal (usually http://localhost:4173)
+
+If npm command is not found
+- Install Node.js from nodejs.org
+- Re-open terminal and run again
+
+Note
+- If the app shows old data, click the “রিসেট” button in the navbar (clears local demo data).
