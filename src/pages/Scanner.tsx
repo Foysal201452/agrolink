@@ -25,6 +25,8 @@ export default function Scanner() {
   const regionId = useMemo(() => `qr-reader-${Math.random().toString(16).slice(2)}`, []);
   const qrRef = useRef<Html5Qrcode | null>(null);
   const busyRef = useRef(false);
+  const lastScanRef = useRef<{ orderId: string; atMs: number } | null>(null);
+  const lastToastRef = useRef<{ atMs: number } | null>(null);
 
   const [busy, setBusy] = useState(false);
   const [last, setLast] = useState<ScanResult | null>(null);
@@ -65,6 +67,11 @@ export default function Scanner() {
             const orderId = (decodedText ?? "").trim();
             if (!orderId) return;
 
+            const nowMs = Date.now();
+            const prev = lastScanRef.current;
+            if (prev && prev.orderId === orderId && nowMs - prev.atMs < 3500) return;
+            lastScanRef.current = { orderId, atMs: nowMs };
+
             try {
               busyRef.current = true;
               setBusy(true);
@@ -89,10 +96,18 @@ export default function Scanner() {
               };
               setLast(payload);
               setMsg(`Order status updated: ${payload.shipmentStep ?? "—"}${payload.cityHub ? ` • ${payload.cityHub}` : ""}`);
-              toast("Scan OK", { description: `${orderId} আপডেট হয়েছে।` });
+              const prevToast = lastToastRef.current;
+              if (!prevToast || nowMs - prevToast.atMs > 3500) {
+                lastToastRef.current = { atMs: nowMs };
+                toast("Scan OK", { description: `${orderId} আপডেট হয়েছে।` });
+              }
             } catch {
               setMsg("Scan failed.");
-              toast("Scan failed", { description: "OrderId ভুল বা login নেই।" });
+              const prevToast = lastToastRef.current;
+              if (!prevToast || nowMs - prevToast.atMs > 3500) {
+                lastToastRef.current = { atMs: nowMs };
+                toast("Scan failed", { description: "OrderId ভুল বা login নেই।" });
+              }
             } finally {
               setBusy(false);
               busyRef.current = false;

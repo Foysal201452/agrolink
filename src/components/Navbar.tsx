@@ -24,10 +24,9 @@ function navForUser(user: User | undefined) {
         { to: "/logistics", label: "লজিস্টিকস" },
         { to: "/farmer-dashboard", label: "কৃষক" },
         { to: "/buyer-dashboard", label: "ক্রেতা" },
-        { to: "/cart", label: "কার্ট" },
         { to: "/db-admin", label: "DB" },
       ],
-      showCart: true,
+      showCart: false,
       showReset: true,
     };
   }

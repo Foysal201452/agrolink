@@ -57,7 +57,7 @@ const App = () => (
               <Route
                 path="/cart"
                 element={
-                  <RequireRole roles={["buyer", "admin"]}>
+                  <RequireRole roles={["buyer"]}>
                     <Cart />
                   </RequireRole>
                 }

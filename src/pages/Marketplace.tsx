@@ -54,8 +54,9 @@ const categories = [
 
 export default function Marketplace() {
   const { auth } = useAuth();
-  const { state, addToCart } = useAppStore();
-  const canCart = auth?.user.role === "buyer" || auth?.user.role === "admin";
+  const { state, addToCart, deactivateListing } = useAppStore();
+  const canCart = auth?.user.role === "buyer";
+  const isAdmin = auth?.user.role === "admin";
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
 
@@ -165,7 +166,18 @@ export default function Marketplace() {
                       </span>
                     </div>
 
-                    {canCart ? (
+                    {isAdmin ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void deactivateListing(crop.id);
+                          toast("Listing removed", { description: `${crop.name} ডিঅ্যাক্টিভ করা হয়েছে।` });
+                        }}
+                        className="mt-5 w-full rounded-xl border border-white/25 bg-white/10 py-3 text-sm font-extrabold text-white backdrop-blur transition-all hover:bg-white/15"
+                      >
+                        Remove listing (Admin)
+                      </button>
+                    ) : canCart ? (
                       <button
                         type="button"
                         onClick={() => {

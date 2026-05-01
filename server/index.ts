@@ -156,7 +156,7 @@ function requireAdmin(req: express.Request, res: express.Response, next: express
 function requireBuyerOrAdmin(req: express.Request, res: express.Response, next: express.NextFunction) {
   const user = (req as any).user as SessionUser | undefined;
   if (!user) return res.status(401).json({ error: "Missing auth" });
-  if (user.role !== "buyer" && user.role !== "admin") return res.status(403).json({ error: "Buyer or admin only" });
+  if (user.role !== "buyer") return res.status(403).json({ error: "Buyer only" });
   return next();
 }
 
