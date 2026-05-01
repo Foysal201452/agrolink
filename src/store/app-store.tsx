@@ -552,10 +552,16 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         warehouses?: Warehouse[];
       };
       if (Array.isArray(data.crops) && data.crops.length > 0) dispatch({ type: "SET_CROPS", crops: data.crops });
-      // Avoid wiping local demo state when bootstrap is public/unauthenticated (returns empty arrays).
-      if (Array.isArray(data.orders) && (auth?.token || data.orders.length > 0)) dispatch({ type: "SET_ORDERS", orders: data.orders });
-      if (Array.isArray(data.shipments) && (auth?.token || data.shipments.length > 0))
+      // Avoid wiping local demo state when bootstrap returns empty arrays.
+      // This can happen for public users, or for depo/delivery accounts (scanner-only).
+      const role = auth?.user.role;
+      const canReceiveOrdersFromBootstrap = role === "admin" || role === "buyer" || role === "farmer";
+      if (Array.isArray(data.orders) && (canReceiveOrdersFromBootstrap || data.orders.length > 0)) {
+        dispatch({ type: "SET_ORDERS", orders: data.orders });
+      }
+      if (Array.isArray(data.shipments) && (canReceiveOrdersFromBootstrap || data.shipments.length > 0)) {
         dispatch({ type: "SET_SHIPMENTS", shipments: data.shipments });
+      }
       if (Array.isArray(data.warehouses) && data.warehouses.length > 0) dispatch({ type: "SET_WAREHOUSES", warehouses: data.warehouses });
     } catch {
       // ignore (offline demo mode)
