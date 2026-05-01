@@ -762,6 +762,8 @@ app.post("/api/scan", requireAuth, (req, res) => {
   let nextStep: ShipmentRow["step"] = shipment.step;
   let nextOrderStatus: OrderRow["status"] = order.status;
   let action = "";
+  const now = new Date();
+  const timeline = safeParseJson<any[]>(shipment.timelineJson) ?? [];
 
   if (user.role === "delivery") {
     nextStep = "Out for Delivery";
@@ -771,16 +773,37 @@ app.post("/api/scan", requireAuth, (req, res) => {
     const area = (user.area ?? "").trim();
     if (!area) return res.status(400).json({ error: "Depot user missing area" });
     const depot = pickCityWarehouseByArea(area);
-    route.cityHub = depot.name;
-    route.city = `${area} বাজার`;
-    nextStep = "At City Hub";
-    nextOrderStatus = "In Transit";
-    action = `SCAN_DEPO_AT_${area}`;
+    const depotName = depot.name;
+
+    // Route-aware scan:
+    // - If scanned at origin hub (route.villageHub), mark "At Village Hub"
+    // - If scanned at destination hub (route.cityHub), mark "At City Hub"
+    // - Otherwise, treat as "At City Hub" at the scanned depot and update route.cityHub
+    const originHub = String(route.villageHub ?? "").trim();
+    const destHub = String(route.cityHub ?? "").trim();
+
+    if (originHub && depotName === originHub) {
+      nextStep = "At Village Hub";
+      nextOrderStatus = "Processing";
+      action = `SCAN_DEPO_ORIGIN_${area}`;
+    } else if (destHub && depotName === destHub) {
+      nextStep = "At City Hub";
+      nextOrderStatus = "In Transit";
+      action = `SCAN_DEPO_DEST_${area}`;
+    } else {
+      route.cityHub = depotName;
+      route.city = `${area} বাজার`;
+      nextStep = "At City Hub";
+      nextOrderStatus = "In Transit";
+      action = `SCAN_DEPO_AT_${area}`;
+    }
   } else {
     nextStep = "In Transit";
     nextOrderStatus = "In Transit";
     action = "SCAN_ADMIN";
   }
+
+  const nextTimeline = [...timeline, { step: nextStep, timeLabel: formatDateLabel(now) }];
 
   const event: ScanEventRow = {
     id: makeId("SE"),
@@ -794,7 +817,12 @@ app.post("/api/scan", requireAuth, (req, res) => {
   };
 
   const tx = db.transaction(() => {
-    db.prepare(`UPDATE shipments SET step = ?, routeJson = ? WHERE id = ?`).run(nextStep, JSON.stringify(route), shipment.id);
+    db.prepare(`UPDATE shipments SET step = ?, routeJson = ?, timelineJson = ? WHERE id = ?`).run(
+      nextStep,
+      JSON.stringify(route),
+      JSON.stringify(nextTimeline),
+      shipment.id,
+    );
     db.prepare(`UPDATE orders SET status = ? WHERE id = ?`).run(nextOrderStatus, orderId);
     db.prepare(
       `INSERT INTO scan_events (id, orderId, shipmentId, scannedByUserId, role, area, timestampMs, action)
