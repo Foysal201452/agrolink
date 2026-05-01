@@ -90,14 +90,31 @@ export type ScanEventRow = {
   action: string;
 };
 
+export type SessionRow = {
+  token: string;
+  userId: string;
+  createdAtMs: number;
+  expiresAtMs: number;
+};
+
 function ensureDir(p: string) {
   if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
 }
 
 export function openDb() {
-  const dataDir = path.resolve(process.cwd(), "server", "data");
+  const dataDir = (() => {
+    const envPath = String(process.env.DB_DIR ?? "").trim();
+    if (envPath) return path.resolve(envPath);
+    const railwayVol = String(process.env.RAILWAY_VOLUME_MOUNT_PATH ?? "").trim();
+    if (railwayVol) return path.resolve(railwayVol);
+    return path.resolve(process.cwd(), "server", "data");
+  })();
   ensureDir(dataDir);
-  const dbPath = path.join(dataDir, "agrolink.sqlite");
+  const dbPath = (() => {
+    const explicit = String(process.env.DB_PATH ?? "").trim();
+    if (explicit) return path.resolve(explicit);
+    return path.join(dataDir, "agrolink.sqlite");
+  })();
   const db = new Database(dbPath);
   db.pragma("journal_mode = WAL");
   db.pragma("foreign_keys = ON");
@@ -196,6 +213,16 @@ export function openDb() {
     );
     CREATE INDEX IF NOT EXISTS idx_scan_events_orderId ON scan_events(orderId);
     CREATE INDEX IF NOT EXISTS idx_scan_events_time ON scan_events(timestampMs);
+
+    CREATE TABLE IF NOT EXISTS sessions (
+      token TEXT PRIMARY KEY,
+      userId TEXT NOT NULL,
+      createdAtMs INTEGER NOT NULL,
+      expiresAtMs INTEGER NOT NULL,
+      FOREIGN KEY(userId) REFERENCES users(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_sessions_userId ON sessions(userId);
+    CREATE INDEX IF NOT EXISTS idx_sessions_expiresAt ON sessions(expiresAtMs);
   `);
 
   const count = db.prepare(`SELECT COUNT(1) as n FROM crops`).get() as { n: number };

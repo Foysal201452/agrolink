@@ -78,7 +78,7 @@ function pickCityWarehouseByArea(area: string): WarehouseRow {
 // Demo auth (token sessions)
 // -------------------------
 type SessionUser = Pick<UserRow, "id" | "username" | "role" | "area" | "displayName" | "buyerName" | "farmerName">;
-const sessions = new Map<string, SessionUser>();
+const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 14; // 14 days
 
 function makeToken() {
   return crypto.randomBytes(24).toString("base64url");
@@ -116,8 +116,15 @@ function optionalAuth(req: express.Request, res: express.Response, next: express
     (req as any).user = undefined;
     return next();
   }
-  const user = sessions.get(token);
-  (req as any).user = user;
+  const now = Date.now();
+  const row = db
+    .prepare(
+      `SELECT u.* FROM sessions s
+       JOIN users u ON u.id = s.userId
+       WHERE s.token = ? AND s.expiresAtMs > ?`,
+    )
+    .get(token, now) as UserRow | undefined;
+  (req as any).user = row ? rowToSessionUser(row) : undefined;
   return next();
 }
 
@@ -126,9 +133,16 @@ function requireAuth(req: express.Request, res: express.Response, next: express.
   const m = /^Bearer\s+(.+)$/i.exec(header);
   const token = m?.[1];
   if (!token) return res.status(401).json({ error: "Missing token" });
-  const user = sessions.get(token);
-  if (!user) return res.status(401).json({ error: "Invalid token" });
-  (req as any).user = user;
+  const now = Date.now();
+  const row = db
+    .prepare(
+      `SELECT u.* FROM sessions s
+       JOIN users u ON u.id = s.userId
+       WHERE s.token = ? AND s.expiresAtMs > ?`,
+    )
+    .get(token, now) as UserRow | undefined;
+  if (!row) return res.status(401).json({ error: "Invalid token" });
+  (req as any).user = rowToSessionUser(row);
   return next();
 }
 
@@ -257,7 +271,13 @@ app.post("/api/auth/login", (req, res) => {
 
   const token = makeToken();
   const user = rowToSessionUser(row);
-  sessions.set(token, user);
+  const now = Date.now();
+  db.prepare(`INSERT INTO sessions (token, userId, createdAtMs, expiresAtMs) VALUES (?, ?, ?, ?)`).run(
+    token,
+    user.id,
+    now,
+    now + SESSION_TTL_MS,
+  );
   res.json({ token, user: publicSessionUser(user) });
 });
 
@@ -291,7 +311,12 @@ app.post("/api/auth/register", (req, res) => {
 
   const token = makeToken();
   const user = rowToSessionUser(row);
-  sessions.set(token, user);
+  db.prepare(`INSERT INTO sessions (token, userId, createdAtMs, expiresAtMs) VALUES (?, ?, ?, ?)`).run(
+    token,
+    user.id,
+    Date.now(),
+    Date.now() + SESSION_TTL_MS,
+  );
   res.status(201).json({ token, user: publicSessionUser(user) });
 });
 
@@ -716,11 +741,14 @@ const scanSchema = z.object({
   orderId: z.string().trim().min(3).max(80),
 });
 
-app.post("/api/scan", requireAuth, requireAdmin, (req, res) => {
+app.post("/api/scan", requireAuth, (req, res) => {
   const parsed = scanSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Invalid payload" });
 
   const user = (req as any).user as SessionUser;
+  if (user.role !== "admin" && user.role !== "depo" && user.role !== "delivery") {
+    return res.status(403).json({ error: "Scan only for admin/depo/delivery" });
+  }
   const orderId = parsed.data.orderId;
 
   const order = db.prepare(`SELECT * FROM orders WHERE id = ?`).get(orderId) as OrderRow | undefined;
@@ -735,11 +763,24 @@ app.post("/api/scan", requireAuth, requireAdmin, (req, res) => {
   let nextOrderStatus: OrderRow["status"] = order.status;
   let action = "";
 
-  // Admin-only tool: for demo allow admin to choose action by scanning QR.
-  // Default behavior: mark as "Out for Delivery" to show progress.
-  nextStep = "Out for Delivery";
-  nextOrderStatus = "In Transit";
-  action = "SCAN_ADMIN";
+  if (user.role === "delivery") {
+    nextStep = "Out for Delivery";
+    nextOrderStatus = "In Transit";
+    action = "SCAN_DELIVERY_OUT_FOR_DELIVERY";
+  } else if (user.role === "depo") {
+    const area = (user.area ?? "").trim();
+    if (!area) return res.status(400).json({ error: "Depot user missing area" });
+    const depot = pickCityWarehouseByArea(area);
+    route.cityHub = depot.name;
+    route.city = `${area} বাজার`;
+    nextStep = "At City Hub";
+    nextOrderStatus = "In Transit";
+    action = `SCAN_DEPO_AT_${area}`;
+  } else {
+    nextStep = "In Transit";
+    nextOrderStatus = "In Transit";
+    action = "SCAN_ADMIN";
+  }
 
   const event: ScanEventRow = {
     id: makeId("SE"),

@@ -547,8 +547,10 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         };
         if (cancelled) return;
         if (Array.isArray(data.crops) && data.crops.length > 0) dispatch({ type: "SET_CROPS", crops: data.crops });
-        if (Array.isArray(data.orders)) dispatch({ type: "SET_ORDERS", orders: data.orders });
-        if (Array.isArray(data.shipments)) dispatch({ type: "SET_SHIPMENTS", shipments: data.shipments });
+        // Avoid wiping local demo state when bootstrap is public/unauthenticated (returns empty arrays).
+        if (Array.isArray(data.orders) && (auth?.token || data.orders.length > 0)) dispatch({ type: "SET_ORDERS", orders: data.orders });
+        if (Array.isArray(data.shipments) && (auth?.token || data.shipments.length > 0))
+          dispatch({ type: "SET_SHIPMENTS", shipments: data.shipments });
         if (Array.isArray(data.warehouses) && data.warehouses.length > 0) dispatch({ type: "SET_WAREHOUSES", warehouses: data.warehouses });
       } catch {
         // ignore (offline demo mode)
