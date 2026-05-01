@@ -6,6 +6,7 @@ import { useEffect } from "react";
 import { useAuth } from "@/auth/auth";
 import { useAppStore } from "@/store/app-store";
 import { toast } from "@/components/ui/sonner";
+import QRCode from "react-qr-code";
 
 const stepColor: Record<string, string> = {
   "Collected": "bg-accent/20 text-accent",
@@ -101,6 +102,7 @@ export default function Logistics() {
                 <th className="text-left py-3 font-medium">শিপমেন্ট</th>
                 <th className="text-left py-3 font-medium">বর্তমান হাব/অবস্থান</th>
                 <th className="text-left py-3 font-medium">স্ট্যাটাস</th>
+                  <th className="text-right py-3 font-medium">QR</th>
               </tr>
             </thead>
             <tbody>
@@ -116,6 +118,11 @@ export default function Logistics() {
                     <td className="py-3 text-muted-foreground">{row.shipmentId}</td>
                     <td className="py-3 text-foreground">{row.hub}</td>
                     <td className="py-3 text-muted-foreground">{row.status}</td>
+                    <td className="py-3 text-right">
+                      <div className="inline-flex items-center justify-end rounded-md bg-white p-1">
+                        <QRCode value={row.orderId} size={56} />
+                      </div>
+                    </td>
                   </tr>
                 ))
               )}

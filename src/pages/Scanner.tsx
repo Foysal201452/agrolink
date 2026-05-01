@@ -24,6 +24,7 @@ export default function Scanner() {
 
   const regionId = useMemo(() => `qr-reader-${Math.random().toString(16).slice(2)}`, []);
   const qrRef = useRef<Html5Qrcode | null>(null);
+  const busyRef = useRef(false);
 
   const [busy, setBusy] = useState(false);
   const [last, setLast] = useState<ScanResult | null>(null);
@@ -60,11 +61,12 @@ export default function Scanner() {
           { facingMode: "environment" },
           { fps: 10, qrbox: { width: 250, height: 250 } },
           async (decodedText) => {
-            if (busy) return;
+            if (busyRef.current) return;
             const orderId = (decodedText ?? "").trim();
             if (!orderId) return;
 
             try {
+              busyRef.current = true;
               setBusy(true);
               setMsg("Updating order status…");
               const res = await authFetch("/api/scan", {
@@ -86,13 +88,14 @@ export default function Scanner() {
                 orderStatus: json?.order?.status,
               };
               setLast(payload);
-              setMsg("Order status updated.");
+              setMsg(`Order status updated: ${payload.shipmentStep ?? "—"}${payload.cityHub ? ` • ${payload.cityHub}` : ""}`);
               toast("Scan OK", { description: `${orderId} আপডেট হয়েছে।` });
             } catch {
               setMsg("Scan failed.");
               toast("Scan failed", { description: "OrderId ভুল বা login নেই।" });
             } finally {
               setBusy(false);
+              busyRef.current = false;
             }
           },
           () => {
@@ -117,7 +120,7 @@ export default function Scanner() {
         });
       }
     };
-  }, [auth, authFetch, busy, regionId]);
+  }, [auth, authFetch, regionId]);
 
   return (
     <div className="min-h-screen">

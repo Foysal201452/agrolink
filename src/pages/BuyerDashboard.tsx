@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { motion } from "framer-motion";
 import { ShoppingBag, Package, Clock, CreditCard } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
@@ -7,8 +6,6 @@ import Footer from "@/components/Footer";
 import { useAuth } from "@/auth/auth";
 import { useAppStore } from "@/store/app-store";
 import { formatTaka } from "@/lib/money";
-import QRCode from "react-qr-code";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 const months = ["জানু", "ফেব", "মার্চ", "এপ্রি", "মে", "জুন", "জুল", "আগ", "সেপ্ট", "অক্ট", "নভে", "ডিসে"];
 
 function ymKey(d: Date) {
@@ -26,7 +23,6 @@ export default function BuyerDashboard() {
   const { auth } = useAuth();
   const { state, derived } = useAppStore();
   const welcome = auth?.user.role === "admin" ? "অ্যাডমিন" : auth?.user.displayName ?? state.buyerName;
-  const [qrOrderId, setQrOrderId] = useState<string>("");
 
   const totalOrders = derived.ordersDetailed.length;
   const totalSpent = derived.ordersDetailed.reduce((sum, o) => sum + o.total, 0);
@@ -133,7 +129,6 @@ export default function BuyerDashboard() {
                   <th className="text-left py-3 font-medium">মোট</th>
                   <th className="text-left py-3 font-medium">তারিখ</th>
                   <th className="text-left py-3 font-medium">স্ট্যাটাস</th>
-                  <th className="text-right py-3 font-medium">QR</th>
                 </tr>
               </thead>
               <tbody>
@@ -151,19 +146,6 @@ export default function BuyerDashboard() {
                         "bg-secondary text-secondary-foreground"
                       }`}>{orderStatusLabel[order.status] ?? order.status}</span>
                     </td>
-                    <td className="py-3 text-right">
-                      <div className="inline-flex items-center justify-end gap-2">
-                        <div className="rounded-md bg-white p-1">
-                          <QRCode value={order.id} size={56} />
-                        </div>
-                        <button
-                          onClick={() => setQrOrderId(order.id)}
-                          className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted"
-                        >
-                          বড় করে দেখুন
-                        </button>
-                      </div>
-                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -172,21 +154,6 @@ export default function BuyerDashboard() {
         </div>
       </div>
       <Footer />
-
-      <Dialog open={!!qrOrderId} onOpenChange={(v) => setQrOrderId(v ? qrOrderId : "")}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Order QR</DialogTitle>
-            <DialogDescription>এই QR কোডটি স্ক্যান করলে অর্ডার আইডি পাওয়া যাবে: {qrOrderId}</DialogDescription>
-          </DialogHeader>
-          <div className="flex items-center justify-center rounded-xl border border-border/50 bg-white p-4">
-            <QRCode value={qrOrderId || "—"} size={220} />
-          </div>
-          <div className="text-xs text-muted-foreground break-all">
-            Payload: <span className="text-foreground font-medium">{qrOrderId}</span>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
