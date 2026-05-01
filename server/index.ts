@@ -2,6 +2,8 @@ import express from "express";
 import cors from "cors";
 import { z } from "zod";
 import crypto from "node:crypto";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import {
   openDb,
@@ -784,6 +786,20 @@ app.post("/api/scan", requireAuth, requireAdmin, (req, res) => {
     event,
   });
 });
+
+// -------------------------
+// Serve web build on Railway
+// -------------------------
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const distDir = path.resolve(__dirname, "..", "dist");
+
+if (process.env.NODE_ENV === "production") {
+  app.use(express.static(distDir));
+  app.get("*", (_req, res) => {
+    res.sendFile(path.join(distDir, "index.html"));
+  });
+}
 
 app.listen(PORT, () => {
   // eslint-disable-next-line no-console
