@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useAuth } from "@/auth/auth";
+import { toast } from "@/components/ui/sonner";
 
 type AdminTables = {
   crops: any[];
@@ -30,6 +31,118 @@ function JsonCell({ value }: { value: unknown }) {
     <pre className="max-w-[520px] whitespace-pre-wrap break-words text-xs text-foreground/90">
       {JSON.stringify(parsed, null, 2)}
     </pre>
+  );
+}
+
+type AdminUserRow = {
+  id: string;
+  username: string;
+  password: string;
+  role: string;
+  area?: string | null;
+  displayName?: string | null;
+  buyerName?: string | null;
+  farmerName?: string | null;
+  createdAtMs?: number;
+};
+
+function UsersAdminTable({
+  users,
+  currentUserId,
+  authFetch,
+  onDeleted,
+}: {
+  users: AdminUserRow[];
+  currentUserId?: string;
+  authFetch: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+  onDeleted: () => void;
+}) {
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const handleDelete = async (u: AdminUserRow) => {
+    if (u.username.toLowerCase() === "admin") {
+      toast("সিস্টেম অ্যাডমিন মোছা যাবে না", { description: "admin অ্যাকাউন্ট সুরক্ষিত।" });
+      return;
+    }
+    if (u.id === currentUserId) {
+      toast("নিজের অ্যাকাউন্ট মোছা যাবে না", { description: "অন্য অ্যাডমিন সেশন থেকে মুছুন বা লগআউট করে চেষ্টা করুন।" });
+      return;
+    }
+    const ok = window.confirm(
+      `ব্যবহারকারী "${u.username}" মুছে ফেলবেন? একই ইউজারনেমে আবার রেজিস্টার করা যাবে।`,
+    );
+    if (!ok) return;
+    try {
+      setBusyId(u.id);
+      const res = await authFetch(`/api/admin/users/${encodeURIComponent(u.id)}`, { method: "DELETE" });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(typeof body?.error === "string" ? body.error : `HTTP ${res.status}`);
+      toast("ব্যবহারকারী মোছা হয়েছে", { description: u.username });
+      onDeleted();
+    } catch (e) {
+      toast("মুছতে ব্যর্থ", { description: (e as Error).message });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  return (
+    <div className="rounded-xl border border-border/50 bg-gradient-card p-6 shadow-card">
+      <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-foreground">
+        <strong className="font-semibold">ডেমো সতর্কতা:</strong> এই পাতায় পাসওয়ার্ড প্লেইন টেক্সটে দেখায়—শুধু ক্লাসরুম/ডেমোর জন্য। প্রোডাকশনে এমন করবেন না।
+      </div>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="font-heading text-lg font-semibold">Table: users (credentials + delete)</h2>
+        <span className="text-xs text-muted-foreground">Rows: {users.length}</span>
+      </div>
+
+      {users.length === 0 ? (
+        <div className="rounded-lg border border-border/30 bg-muted/30 p-4">
+          <p className="text-sm text-muted-foreground">No rows yet.</p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border/50 text-muted-foreground">
+                <th className="text-left py-3 pr-4 font-medium whitespace-nowrap">username</th>
+                <th className="text-left py-3 pr-4 font-medium whitespace-nowrap">password</th>
+                <th className="text-left py-3 pr-4 font-medium whitespace-nowrap">role</th>
+                <th className="text-left py-3 pr-4 font-medium whitespace-nowrap">displayName</th>
+                <th className="text-left py-3 pr-4 font-medium whitespace-nowrap">id</th>
+                <th className="text-left py-3 pr-4 font-medium whitespace-nowrap">action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((u) => {
+                const locked = u.username.toLowerCase() === "admin" || u.id === currentUserId;
+                return (
+                  <tr key={u.id} className="border-b border-border/30 align-middle">
+                    <td className="py-3 pr-4 font-mono text-xs">{u.username}</td>
+                    <td className="py-3 pr-4 font-mono text-xs text-primary">{u.password}</td>
+                    <td className="py-3 pr-4 whitespace-nowrap">{u.role}</td>
+                    <td className="py-3 pr-4 max-w-[200px] truncate" title={u.displayName ?? ""}>
+                      {u.displayName ?? "—"}
+                    </td>
+                    <td className="py-3 pr-4 font-mono text-[11px] text-muted-foreground">{u.id}</td>
+                    <td className="py-3 pr-4">
+                      <button
+                        type="button"
+                        disabled={locked || busyId === u.id}
+                        onClick={() => void handleDelete(u)}
+                        className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-1.5 text-xs font-semibold text-destructive hover:bg-destructive/20 disabled:opacity-40 disabled:pointer-events-none"
+                      >
+                        {busyId === u.id ? "…" : "মুছুন"}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -193,7 +306,12 @@ export default function DbAdmin() {
           <SimpleTable rows={data?.shipments ?? []} title="Table: shipments" />
           <SimpleTable rows={data?.warehouses ?? []} title="Table: warehouses" />
           <SimpleTable rows={data?.scan_events ?? []} title="Table: scan_events" />
-          <SimpleTable rows={data?.users ?? []} title="Table: users (password redacted)" />
+          <UsersAdminTable
+            users={(data?.users ?? []) as AdminUserRow[]}
+            currentUserId={auth?.user.id}
+            authFetch={authFetch}
+            onDeleted={() => void load()}
+          />
         </div>
       </div>
       <Footer />

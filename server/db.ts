@@ -118,6 +118,7 @@ export function openDb() {
   const db = new Database(dbPath);
   db.pragma("journal_mode = WAL");
   db.pragma("foreign_keys = ON");
+  db.pragma("busy_timeout = 8000");
 
   // Migrations (must run before app logic that inserts rows)
   migrateAuthRoleConstraints(db);

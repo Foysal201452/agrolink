@@ -28,6 +28,7 @@ npm run dev:all
 নোট:
 - প্রথমবার রান করলে `server/data/agrolink.sqlite` অটো তৈরি হবে এবং seed data ঢুকে যাবে।
 - Server না চালালে অ্যাপ আগের মতোই local demo data (localStorage) দিয়ে চলবে।
+- **রেজিস্টার / লগইন** SQLite ইউজার টেবিলে লেখে—এগুলো কাজ করতে **`npm run dev:all`** দিয়ে API চালু রাখুন (`npm run dev` শুধু হলে `/api` পৌঁছাবে না)। `npm run preview` এর জন্যও আগে API সার্ভার চালু থাকতে হবে।
 
 ### DB ফিচার (ডেমো)
 - **Marketplace crops**: DB থেকে লোড হয়

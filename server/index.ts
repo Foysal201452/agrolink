@@ -247,13 +247,27 @@ function buildBootstrapForUser(user?: SessionUser) {
   return { crops, orders: apiOrders, shipments: mapShipmentsApi(shipments), warehouses: cityWarehouses };
 }
 
+const usernameLoginSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(40)
+  .transform((s) => s.toLowerCase().normalize("NFKC"));
+
+const usernameRegisterSchema = z
+  .string()
+  .trim()
+  .min(3)
+  .max(40)
+  .transform((s) => s.toLowerCase().normalize("NFKC"));
+
 const loginSchema = z.object({
-  username: z.string().trim().min(1).max(40),
+  username: usernameLoginSchema,
   password: z.string().trim().min(1).max(60),
 });
 
 const registerSchema = z.object({
-  username: z.string().trim().min(3).max(40),
+  username: usernameRegisterSchema,
   password: z.string().trim().min(4).max(60),
   role: z.enum(["buyer", "farmer"]),
   displayName: z.string().trim().min(1).max(60),
@@ -266,7 +280,7 @@ app.post("/api/auth/login", (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: "Invalid payload" });
 
   const { username, password } = parsed.data;
-  const row = db.prepare(`SELECT * FROM users WHERE username = ?`).get(username) as UserRow | undefined;
+  const row = db.prepare(`SELECT * FROM users WHERE lower(username) = ?`).get(username) as UserRow | undefined;
   if (!row || row.password !== password) return res.status(401).json({ error: "Invalid credentials" });
 
   const token = makeToken();
@@ -294,6 +308,9 @@ app.post("/api/auth/register", (req, res) => {
   if (role === "buyer" && !buyerName) return res.status(400).json({ error: "buyerName required" });
   if (role === "farmer" && !farmerName) return res.status(400).json({ error: "farmerName required" });
 
+  const dup = db.prepare(`SELECT 1 FROM users WHERE lower(username) = ?`).get(username) as { 1: number } | undefined;
+  if (dup) return res.status(409).json({ error: "Username already exists" });
+
   const id = makeId("USR");
   const createdAtMs = Date.now();
 
@@ -306,7 +323,7 @@ app.post("/api/auth/register", (req, res) => {
     return res.status(409).json({ error: "Username already exists" });
   }
 
-  const row = db.prepare(`SELECT * FROM users WHERE username = ?`).get(username) as UserRow | undefined;
+  const row = db.prepare(`SELECT * FROM users WHERE lower(username) = ?`).get(username) as UserRow | undefined;
   if (!row) return res.status(500).json({ error: "Failed to load user" });
 
   const token = makeToken();
@@ -342,10 +359,7 @@ app.get("/api/admin/tables", requireAuth, requireAdmin, (_req, res) => {
   const shipments = db.prepare(`SELECT * FROM shipments ORDER BY createdAtMs DESC`).all() as ShipmentRow[];
   const warehouses = db.prepare(`SELECT * FROM warehouses ORDER BY kind DESC, id ASC`).all() as WarehouseRow[];
   const scanEvents = db.prepare(`SELECT * FROM scan_events ORDER BY timestampMs DESC`).all() as ScanEventRow[];
-  const users = (db.prepare(`SELECT * FROM users ORDER BY createdAtMs ASC`).all() as UserRow[]).map((u) => ({
-    ...u,
-    password: "****",
-  }));
+  const users = db.prepare(`SELECT * FROM users ORDER BY createdAtMs ASC`).all() as UserRow[];
 
   res.json({
     crops,
@@ -410,6 +424,27 @@ app.post("/api/admin/rebalance-crops", requireAuth, requireAdmin, (_req, res) =>
 app.post("/api/admin/clear-village-warehouses", requireAuth, requireAdmin, (_req, res) => {
   const info = db.prepare(`DELETE FROM warehouses WHERE kind = 'village'`).run();
   res.json({ ok: true, deleted: info.changes });
+});
+
+/** Remove a user so their username can be registered again (demo admin tool — not for production). */
+app.delete("/api/admin/users/:userId", requireAuth, requireAdmin, (req, res) => {
+  const sessionUser = (req as any).user as SessionUser;
+  const rawId = String((req.params as { userId?: string }).userId ?? "").trim();
+  if (!rawId) return res.status(400).json({ error: "Missing user id" });
+
+  const row = db.prepare(`SELECT * FROM users WHERE id = ?`).get(rawId) as UserRow | undefined;
+  if (!row) return res.status(404).json({ error: "User not found" });
+
+  if (sessionUser.id === row.id) {
+    return res.status(403).json({ error: "Cannot delete your own account while logged in" });
+  }
+  if (row.username.toLowerCase() === "admin") {
+    return res.status(403).json({ error: "Cannot delete system admin account" });
+  }
+
+  const info = db.prepare(`DELETE FROM users WHERE id = ?`).run(rawId);
+  if (info.changes !== 1) return res.status(500).json({ error: "Delete failed" });
+  res.json({ ok: true });
 });
 
 // --------

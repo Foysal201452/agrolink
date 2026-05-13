@@ -17,6 +17,10 @@ type AuthState = {
 
 const STORAGE_KEY = "agrolink_auth_v1";
 
+function normalizeUsername(s: string) {
+  return s.trim().toLowerCase().normalize("NFKC");
+}
+
 const AuthContext = createContext<{
   auth: AuthState | null;
   login: (username: string, password: string) => Promise<User>;
@@ -74,7 +78,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const res = await fetch("/api/auth/login", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ username, password }),
+          body: JSON.stringify({
+            username: normalizeUsername(username),
+            password: password.trim(),
+          }),
         });
         if (!res.ok) throw new Error("login failed");
         const data = (await res.json()) as { token: string; user: User };
@@ -92,7 +99,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const res = await fetch("/api/auth/register", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify(payload),
+          body: JSON.stringify({
+            ...payload,
+            username: normalizeUsername(payload.username),
+            password: payload.password.trim(),
+            displayName: payload.displayName.trim(),
+            buyerName: payload.buyerName?.trim(),
+            farmerName: payload.farmerName?.trim(),
+          }),
         });
         if (!res.ok) throw new Error("register failed");
         const data = (await res.json()) as { token: string; user: User };

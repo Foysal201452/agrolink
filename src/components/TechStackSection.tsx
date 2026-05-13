@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 
 const stack = [
   { category: "ফ্রন্টএন্ড", items: ["React", "Flutter"], color: "border-primary/40 bg-primary/5" },
-  { category: "ব্যাকএন্ড", items: ["Node.js", "Django"], color: "border-accent/40 bg-accent/5" },
+  { category: "ব্যাকএন্ড", items: ["Node.js", "Express.js"], color: "border-accent/40 bg-accent/5" },
   { category: "ডেটাবেস", items: ["PostgreSQL", "Firebase"], color: "border-primary/40 bg-primary/5" },
   { category: "টুলস", items: ["REST APIs", "Cloud Hosting"], color: "border-accent/40 bg-accent/5" },
 ];
