@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
+import { Sprout } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useAuth } from "@/auth/auth";
 import { toast } from "@/components/ui/sonner";
+import heroImg from "@/assets/hero-farm.jpg";
 
 export default function Login() {
   const { auth, login, register, logout } = useAuth();
@@ -35,17 +37,51 @@ export default function Login() {
   );
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen flex flex-col">
       <Navbar />
-      <div className="container pt-24 pb-16">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-10">
-          <h1 className="font-heading text-3xl sm:text-4xl font-bold mb-2">
-            <span className="text-gradient">লগইন</span>
-          </h1>
-          <p className="text-muted-foreground">ক্রেতা, কৃষক, ডিপো বা ডেলিভারি হিসেবে লগইন করুন। (QR স্ক্যান শুধু ডিপো/ডেলিভারি)</p>
-        </motion.div>
+      <div className="container flex-1 pt-24 pb-16">
+        <div className="grid gap-10 lg:grid-cols-2 lg:gap-0 lg:items-stretch lg:rounded-3xl lg:overflow-hidden lg:border lg:border-primary/15 lg:shadow-card lg:bg-card">
+          <motion.div
+            initial={{ opacity: 0, scale: 1.02 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5 }}
+            className="relative min-h-[240px] overflow-hidden rounded-2xl border border-primary/20 shadow-card ring-1 ring-inset ring-white/10 lg:min-h-[min(640px,calc(100vh-12rem))] lg:rounded-none lg:border-0 lg:shadow-none lg:ring-0"
+          >
+            <img
+              src={heroImg}
+              alt="কৃষিক্ষেত ও সবজি—AgroLink"
+              className="absolute inset-0 h-full w-full object-cover saturate-[0.88] contrast-[1.02]"
+            />
+            {/* Teal scrim aligned with app primary — readable text without gray-on-warm clash */}
+            <div
+              className="absolute inset-0 bg-gradient-to-br from-primary/88 via-emerald-900/72 to-[hsl(196_42%_14%/0.92)]"
+              aria-hidden
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-black/15 lg:bg-gradient-to-r lg:from-black/20 lg:via-transparent lg:to-transparent" aria-hidden />
+            <div className="absolute inset-0 flex flex-col justify-end p-6 sm:p-8 lg:justify-center lg:p-10">
+              <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-white/30 bg-white/15 shadow-lg backdrop-blur-md">
+                <Sprout className="h-6 w-6 text-white drop-shadow-sm" aria-hidden />
+              </div>
+              <p className="font-heading max-w-md text-xl font-bold leading-snug tracking-tight text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.78),0_2px_18px_rgba(0,0,0,0.5)] sm:text-2xl lg:text-3xl">
+                কৃষক থেকে ক্রেতা—<span className="font-extrabold text-emerald-50">এক প্ল্যাটফর্মে</span>
+              </p>
+              <p className="mt-3 max-w-md text-sm font-medium leading-relaxed text-white [text-shadow:0_1px_4px_rgba(0,0,0,0.85)] sm:text-base">
+                নিরাপদ লগইনের মাধ্যমে মার্কেটপ্লেস, অর্ডার ও লজিস্টিকস ট্র্যাকিং—সবই আপনার ভূমিকা অনুযায়ী।
+              </p>
+            </div>
+          </motion.div>
 
-        <div className="max-w-xl rounded-2xl border border-border/50 bg-gradient-card p-6 shadow-card">
+          <div className="flex flex-col justify-center border-primary/[0.07] px-0 pb-2 lg:border-l lg:bg-gradient-to-br lg:from-card lg:to-primary/5 lg:px-10 lg:py-12 xl:px-14">
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
+              <h1 className="font-heading text-3xl sm:text-4xl font-bold mb-2">
+                <span className="text-gradient">লগইন</span>
+              </h1>
+              <p className="text-sm font-medium text-muted-foreground sm:text-base sm:leading-relaxed">
+                ক্রেতা, কৃষক, ডিপো বা ডেলিভারি হিসেবে লগইন করুন। (QR স্ক্যান শুধু ডিপো/ডেলিভারি)
+              </p>
+            </motion.div>
+
+            <div className="max-w-xl rounded-2xl border border-border/60 bg-gradient-card p-6 shadow-card ring-1 ring-primary/[0.06] lg:max-w-none">
           <div className="mb-5 flex items-center gap-2">
             <button
               type="button"
@@ -188,6 +224,8 @@ export default function Login() {
                   {a.label}
                 </button>
               ))}
+            </div>
+          </div>
             </div>
           </div>
         </div>
