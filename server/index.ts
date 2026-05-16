@@ -266,6 +266,17 @@ const loginSchema = z.object({
   password: z.string().trim().min(1).max(60),
 });
 
+const RESERVED_USERNAMES = new Set([
+  "admin",
+  "buyer",
+  "farmer",
+  "dhaka",
+  "ctg",
+  "khulna",
+  "sylhet",
+  "delivery",
+]);
+
 const registerSchema = z.object({
   username: usernameRegisterSchema,
   password: z.string().trim().min(4).max(60),
@@ -274,6 +285,16 @@ const registerSchema = z.object({
   buyerName: z.string().trim().min(1).max(60).optional(),
   farmerName: z.string().trim().min(1).max(60).optional(),
 });
+
+function registerValidationMessage(err: z.ZodError) {
+  const u = err.issues.find((i) => i.path[0] === "username");
+  if (u?.code === "too_small") return "Username must be at least 3 characters";
+  const p = err.issues.find((i) => i.path[0] === "password");
+  if (p?.code === "too_small") return "Password must be at least 4 characters";
+  const d = err.issues.find((i) => i.path[0] === "displayName");
+  if (d) return "Display name is required";
+  return "Invalid registration data";
+}
 
 app.post("/api/auth/login", (req, res) => {
   const parsed = loginSchema.safeParse(req.body);
@@ -297,9 +318,17 @@ app.post("/api/auth/login", (req, res) => {
 
 app.post("/api/auth/register", (req, res) => {
   const parsed = registerSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: "Invalid payload" });
+  if (!parsed.success) {
+    return res.status(400).json({ error: registerValidationMessage(parsed.error) });
+  }
 
   const { username, password, role, displayName } = parsed.data;
+
+  if (RESERVED_USERNAMES.has(username)) {
+    return res.status(409).json({
+      error: `Username "${username}" is reserved for demo accounts — choose another`,
+    });
+  }
 
   const buyerName = role === "buyer" ? (parsed.data.buyerName ?? displayName).trim() : null;
   const farmerName = role === "farmer" ? (parsed.data.farmerName ?? displayName).trim() : null;

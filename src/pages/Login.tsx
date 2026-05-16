@@ -161,7 +161,11 @@ export default function Login() {
                 className="mt-1 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                 placeholder="1234"
               />
-              <p className="mt-1 text-[11px] text-muted-foreground">Demo password: 1234</p>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {mode === "register"
+                  ? "নতুন অ্যাকাউন্ট: username ৩+ অক্ষর, password ৪+ অক্ষর। buyer/farmer/admin ইউজারনেম ব্যবহার করবেন না।"
+                  : "Demo password: 1234"}
+              </p>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 pt-2">
@@ -187,9 +191,10 @@ export default function Login() {
                     else if (u.role === "farmer") navigate(from ?? "/farmer-dashboard");
                     else if (u.role === "depo" || u.role === "delivery") navigate(from ?? "/scanner");
                     else navigate(from ?? "/marketplace");
-                  } catch {
+                  } catch (e) {
+                    const msg = e instanceof Error ? e.message : "Unknown error";
                     toast(mode === "login" ? "Login failed" : "Register failed", {
-                      description: mode === "login" ? "Username/password ভুল।" : "Username আগেই আছে বা তথ্য ভুল।",
+                      description: msg,
                     });
                   } finally {
                     setBusy(false);
